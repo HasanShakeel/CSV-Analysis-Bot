@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot Interface</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-width: 500px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 100%;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .chat-container {
+            background-color: #e9ecef;
+            border-radius: 5px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border: 1px solid #ddd;
+        }
+        .chat-bubble {
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+        }
+        .chat-bubble.user {
+            background-color: #007bff;
+            color: #fff;
+            align-self: flex-end;
+        }
+        .chat-bubble.bot {
+            background-color: #f1f0f0;
+            color: #333;
+            align-self: flex-start;
+        }
+        #token-display, #upload-file-display {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            word-wrap: break-word;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chatbot</h1>
+        <form id="token-form">
+            <label for="api_key">API Key:</label>
+            <input type="text" id="api_key" name="api_key" required>
+            <button type="submit">Get Token</button>
+        </form>
+        <div id="token-display" style="display:none;">
+            <p>Received Token: <span id="received-token"></span></p>
+            <form id="verify-token-form">
+                <label for="token">Enter Token to Verify:</label>
+                <input type="text" id="token" name="token" required>
+                <button type="submit">Verify Token</button>
+            </form>
+        </div>
+        <div id="upload-file-display" style="display:none;">
+            <form id="upload-file-form">
+                <label for="file">Upload File:</label>
+                <input type="file" id="file" name="file" required>
+                <button type="submit">Upload File</button>
+            </form>
+        </div>
+        <form id="chat-form" style="display:none;">
+            <div class="chat-container" id="chat-container"></div>
+            <label for="question">Question:</label>
+            <input type="text" id="question" name="question" required>
+            <button type="submit">Ask</button>
+            <div id="error-message" class="error-message" style="display:none;"></div>
+        </form>
+    </div>
+    
+    <script>
+        document.getElementById('token-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const api_key = document.getElementById('api_key').value;
+            const response = await fetch('/issue_token', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ api_key })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                localStorage.setItem('token', data.access_token);
+                document.getElementById('received-token').innerText = data.access_token;
+                document.getElementById('token-form').style.display = 'none';
+                document.getElementById('token-display').style.display = 'block';
+            } else {
+                alert(data.error);
+            }
+        };
+
+        document.getElementById('verify-token-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const token = document.getElementById('token').value;
+            const response = await fetch('/verify_token', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                alert('Token is valid');
+                document.getElementById('token-display').style.display = 'none';
+                document.getElementById('upload-file-display').style.display = 'block';
+            } else {
+                alert(data.error);
+            }
+        };
+
+        document.getElementById('upload-file-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('extension', file.name.split('.').pop());
+            const token = localStorage.getItem('token');
+            const response = await fetch('/uploadfile', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (response.ok) {
+                alert('File uploaded successfully');
+                document.getElementById('upload-file-display').style.display = 'none';
+                document.getElementById('chat-form').style.display = 'block';
+            } else {
+                alert(data.error);
+            }
+        };
+
+        document.getElementById('chat-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const question = document.getElementById('question').value;
+            const token = localStorage.getItem('token');
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ question })
+            });
+            const data = await response.json();
+            const chatContainer = document.getElementById('chat-container');
+            const errorMessage = document.getElementById('error-message');
+            if (response.ok) {
+                chatContainer.innerHTML += `<div class="chat-bubble user">${question}</div>`;
+                chatContainer.innerHTML += `<div class="chat-bubble bot">${data.response}</div>`;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                document.getElementById('question').value = '';
+                errorMessage.style.display = 'none';
+            } else {
+                errorMessage.innerText = data.error;
+                errorMessage.style.display = 'block';
+            }
+        };
+    </script>
+</body>
+</html>

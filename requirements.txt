@@ -1,0 +1,13 @@
+python-dotenv
+fastapi
+uvicorn
+pandas
+openai
+jwt
+jose
+flask-jwt-extended==4.3.1
+python-dotenv==0.19.1
+PyJWT==2.1.0
+Flask==2.1.2
+requests==2.31.0
+Werkzeug==2.1.2
